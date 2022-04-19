@@ -60,7 +60,7 @@ def run_reconstruction(sfm_dir: Path,
     logger.info('Running 3D reconstruction...')
     if options is None:
         options = {}
-    options = {'num_threads': min(multiprocessing.cpu_count(), 16), **options}
+    options = {'num_threads': min(multiprocessing.cpu_count(), 16), **options} # min_num_matches=10 #TODO add this as a param
     with OutputCapture(verbose):
         with pycolmap.ostream():
             reconstructions = pycolmap.incremental_mapping(

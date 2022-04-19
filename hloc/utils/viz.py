@@ -63,8 +63,7 @@ def plot_keypoints(kpts, colors='lime', ps=4):
     if not isinstance(colors, list):
         colors = [colors] * len(kpts)
     axes = plt.gcf().axes
-    for a, k, c in zip(axes, kpts, colors):
-        a.scatter(k[:, 0], k[:, 1], c=c, s=ps, linewidths=0)
+    return [a.scatter(k[:, 0], k[:, 1], c=c, s=ps, linewidths=0) for a, k, c in zip(axes, kpts, colors)]
 
 
 def plot_matches(kpts0, kpts1, color=None, lw=1.5, ps=4, indices=(0, 1), a=1.):
@@ -118,6 +117,7 @@ def add_text(idx, text, pos=(0.01, 0.99), fs=15, color='w',
         t.set_path_effects([
             path_effects.Stroke(linewidth=lwidth, foreground=lcolor),
             path_effects.Normal()])
+    return t
 
 
 def save_plot(path, **kw):
