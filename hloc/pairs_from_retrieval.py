@@ -66,7 +66,8 @@ def pairs_from_score_matrix(scores: torch.Tensor,
 
 def main(descriptors, output, num_matched,
          query_prefix=None, query_list=None,
-         db_prefix=None, db_list=None, db_model=None, db_descriptors=None):
+         db_prefix=None, db_list=None, db_model=None, db_descriptors=None,
+         match_mask=None):
     logger.info('Extracting image pairs from a retrieval database.')
 
     # We handle multiple reference feature files.
@@ -88,14 +89,21 @@ def main(descriptors, output, num_matched,
     if len(db_names) == 0:
         raise ValueError('Could not find any database image.')
     query_names = parse_names(query_prefix, query_list, query_names_h5)
+    db_names = sorted(db_names)
+    query_names = sorted(query_names)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     db_desc = get_descriptors(db_names, db_descriptors, name2db)
     query_desc = get_descriptors(query_names, descriptors)
     sim = torch.einsum('id,jd->ij', query_desc.to(device), db_desc.to(device))
 
-    # Avoid self-matching
-    self = np.array(query_names)[:, None] == np.array(db_names)[None]
+    if match_mask is None:
+        # Avoid self-matching
+        self = np.array(query_names)[:, None] == np.array(db_names)[None]
+    else:
+        assert match_mask.shape == (len(query_names), len(db_names)), "mask shape must match size of query and database images!"
+        self = match_mask
+
     pairs = pairs_from_score_matrix(sim, self, num_matched, min_score=0)
     pairs = [(query_names[i], db_names[j]) for i, j in pairs]
 
