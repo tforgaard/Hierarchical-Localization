@@ -43,15 +43,15 @@ def main(
         raise ValueError('Provide either a list of images or a feature file.')
 
     pairs = []
-    tot = len(names_q)
+    N = len(names_q)
 
-    for i in range(tot - 1):
-        for j in range(i + 1, min(i + window_size, tot)):
+    for i in range(N - 1):
+        for j in range(i + 1, min(i + window_size + 1, N)):
             pairs.append((names_q[i], names_q[j]))
 
             if quadratic:
                 q = 2**(j-i)
-                if q > window_size and i + q < tot:
+                if q > window_size and i + q < N:
                     pairs.append((names_q[i], names_q[i + q]))
 
     if loop_closure:
@@ -60,13 +60,20 @@ def main(
 
         retrieval_pairs_tmp = output.parent / f'retrieval-pairs-tmp.txt'
 
-        N = tot
+        # match mask describes for each image, which images NOT to include in retrevial match search
+        # I.e., no reason to get retrieval matches for matches already included from sequential matching
         match_mask = np.zeros((N, N), dtype=bool)
-        for k in range(-window_size, window_size):
+        
+        for k in range(-window_size, window_size + 1):
             match_mask += np.eye(N, N, k=k, dtype=bool)
+            if quadratic and k > 0:
+                q = 2**k
+                if window_size < q < N:
+                    match_mask += np.eye(N, N, k=q, dtype=bool)
+                    match_mask += np.eye(N, N, k=-q, dtype=bool)
 
         pairs_from_retrieval.main(
-            retrieval_path, retrieval_pairs_tmp, num_matched=num_loc, window_size=window_size, match_mask=match_mask)
+            retrieval_path, retrieval_pairs_tmp, num_matched=num_loc, match_mask=match_mask)
 
         retrieval = parse_retrieval(retrieval_pairs_tmp)
 
