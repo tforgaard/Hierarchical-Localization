@@ -26,7 +26,7 @@ def main(
         quadratic: bool = False,
         loop_closure: bool = False,
         retrieval_path: Optional[Union[Path, str]] = None,
-        N: Optional[int] = 5,
+        retrieval_interval: Optional[int] = 5,
         num_loc: Optional[int] = 5):
 
     if image_list is not None:
@@ -44,7 +44,7 @@ def main(
 
     pairs = []
     N = len(names_q)
-
+   
     for i in range(N - 1):
         for j in range(i + 1, min(i + window_size + 1, N)):
             pairs.append((names_q[i], names_q[j]))
@@ -62,18 +62,28 @@ def main(
 
         # match mask describes for each image, which images NOT to include in retrevial match search
         # I.e., no reason to get retrieval matches for matches already included from sequential matching
-        match_mask = np.zeros((N, N), dtype=bool)
-        
-        for k in range(-window_size, window_size + 1):
-            match_mask += np.eye(N, N, k=k, dtype=bool)
-            if quadratic and k > 0:
-                q = 2**k
-                if window_size < q < N:
-                    match_mask += np.eye(N, N, k=q, dtype=bool)
-                    match_mask += np.eye(N, N, k=-q, dtype=bool)
+
+        query_list = names_q[::retrieval_interval]
+        M = len(query_list)
+
+        match_mask = np.zeros((M, N), dtype=bool)
+        print(match_mask.shape)
+
+        for i in range(M):
+            for k in range(window_size+1):
+                if i*M - k >= 0 and i*M - k < N:
+                    match_mask[i][i*M - k] = 1
+                if i*M + k >= 0 and i*M + k < N:
+                    match_mask[i][i*M + k] = 1
+
+                if quadratic:
+                    if i*M - 2**k >= 0 and i*M - 2**k < N:
+                        match_mask[i][i*M - 2**k] = 1
+                    if i*M + 2**k >= 0 and i*M + 2**k < N:
+                        match_mask[i][i*M + 2**k] = 1
 
         pairs_from_retrieval.main(
-            retrieval_path, retrieval_pairs_tmp, num_matched=num_loc, match_mask=match_mask)
+            retrieval_path, retrieval_pairs_tmp, num_matched=num_loc, match_mask=match_mask, query_list=query_list)
 
         retrieval = parse_retrieval(retrieval_pairs_tmp)
 
@@ -102,8 +112,8 @@ if __name__ == "__main__":
                         help="Create a loop sequence (last elements matched with first ones)")
     parser.add_argument('--retrieval_path', type=Path,
                         help="Path to retrieval features, necessary for loop closure")
-    parser.add_argument('--N', type=int, default=5,
-                        help="Trigger retrieval every N frames, default: %(default)s")
+    parser.add_argument('--retrieval_interval', type=int, default=5,
+                        help="Trigger retrieval every retrieval_interval frames, default: %(default)s")
     parser.add_argument('--num_loc', type=int, default=5,
                         help='Number of image pairs for loc, default: %(default)s')
     args = parser.parse_args()
