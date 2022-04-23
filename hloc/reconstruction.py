@@ -102,6 +102,7 @@ def main(sfm_dir: Path,
          image_list: Optional[List[str]] = None,
          image_options: Optional[Dict[str, Any]] = None,
          mapper_options: Optional[Dict[str, Any]] = None,
+         run_reconstruction = True,
          ) -> pycolmap.Reconstruction:
 
     assert features.exists(), features
@@ -119,7 +120,9 @@ def main(sfm_dir: Path,
                    min_match_score, skip_geometric_verification)
     if not skip_geometric_verification:
         estimation_and_geometric_verification(database, pairs, verbose)
-    reconstruction = run_reconstruction(
+    reconstruction = None
+    if run_reconstruction:
+        reconstruction = run_reconstruction(
         sfm_dir, database, image_dir, verbose, mapper_options)
     if reconstruction is not None:
         logger.info(f'Reconstruction statistics:\n{reconstruction.summary()}'
