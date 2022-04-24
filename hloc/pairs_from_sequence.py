@@ -71,16 +71,16 @@ def main(
 
         for i in range(M):
             for k in range(window_size+1):
-                if i*M - k >= 0 and i*M - k < N:
-                    match_mask[i][i*M - k] = 1
-                if i*M + k >= 0 and i*M + k < N:
-                    match_mask[i][i*M + k] = 1
+                if i*retrieval_interval - k >= 0 and i*retrieval_interval - k < N:
+                    match_mask[i][i*retrieval_interval - k] = 1
+                if i*retrieval_interval + k >= 0 and i*retrieval_interval + k < N:
+                    match_mask[i][i*retrieval_interval + k] = 1
 
                 if quadratic:
-                    if i*M - 2**k >= 0 and i*M - 2**k < N:
-                        match_mask[i][i*M - 2**k] = 1
-                    if i*M + 2**k >= 0 and i*M + 2**k < N:
-                        match_mask[i][i*M + 2**k] = 1
+                    if i*retrieval_interval - 2**k >= 0 and i*retrieval_interval - 2**k < N:
+                        match_mask[i][i*retrieval_interval - 2**k] = 1
+                    if i*retrieval_interval + 2**k >= 0 and i*retrieval_interval + 2**k < N:
+                        match_mask[i][i*retrieval_interval + 2**k] = 1
 
         pairs_from_retrieval.main(
             retrieval_path, retrieval_pairs_tmp, num_matched=num_loc, match_mask=match_mask, query_list=query_list)
