@@ -55,9 +55,6 @@ def main(
                     pairs.append((names_q[i], names_q[i + q]))
 
     if loop_closure:
-        # TODO raise an error if not found!
-        # retrieval_path = extract_features.main()
-
         retrieval_pairs_tmp = output.parent / f'retrieval-pairs-tmp.txt'
 
         # match mask describes for each image, which images NOT to include in retrevial match search
@@ -65,9 +62,7 @@ def main(
 
         query_list = names_q[::retrieval_interval]
         M = len(query_list)
-
         match_mask = np.zeros((M, N), dtype=bool)
-        print(match_mask.shape)
 
         for i in range(M):
             for k in range(window_size+1):
@@ -109,7 +104,7 @@ if __name__ == "__main__":
     parser.add_argument('--quadratic', action="store_true",
                         help="Pair elements with quadratic overlap")
     parser.add_argument('--loop_closure', action="store_true",
-                        help="Create a loop sequence (last elements matched with first ones)")
+                        help="Do retrieval to look for possible loop closing pairs")
     parser.add_argument('--retrieval_path', type=Path,
                         help="Path to retrieval features, necessary for loop closure")
     parser.add_argument('--retrieval_interval', type=int, default=5,
