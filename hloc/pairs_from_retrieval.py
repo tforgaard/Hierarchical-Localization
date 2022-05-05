@@ -67,7 +67,7 @@ def pairs_from_score_matrix(scores: torch.Tensor,
 def main(descriptors, output, num_matched,
          query_prefix=None, query_list=None,
          db_prefix=None, db_list=None, db_model=None, db_descriptors=None,
-         match_mask=None):
+         match_mask=None, min_score=0):
     logger.info('Extracting image pairs from a retrieval database.')
 
     # We handle multiple reference feature files.
@@ -104,7 +104,7 @@ def main(descriptors, output, num_matched,
         assert match_mask.shape == (len(query_names), len(db_names)), "mask shape must match size of query and database images!"
         self = match_mask
 
-    pairs = pairs_from_score_matrix(sim, self, num_matched, min_score=0)
+    pairs = pairs_from_score_matrix(sim, self, num_matched, min_score)
     pairs = [(query_names[i], db_names[j]) for i, j in pairs]
 
     logger.info(f'Found {len(pairs)} pairs.')
