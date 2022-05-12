@@ -78,7 +78,7 @@ def main(
                         match_mask[i][i*retrieval_interval + 2**k] = 1
 
         pairs_from_retrieval.main(
-            retrieval_path, retrieval_pairs_tmp, num_matched=num_loc, match_mask=match_mask, query_list=query_list)
+            retrieval_path, retrieval_pairs_tmp, num_matched=num_loc, match_mask=match_mask, db_list=names_q, query_list=query_list)
 
         retrieval = parse_retrieval(retrieval_pairs_tmp)
 
