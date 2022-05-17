@@ -26,6 +26,9 @@ def list_h5_names(path):
         def visit_fn(_, obj):
             if isinstance(obj, h5py.Dataset):
                 names.append(obj.parent.name.strip('/'))
+        for key in fd.keys():
+            if isinstance(fd.get(key, getlink=True), h5py.ExternalLink):
+                fd[key].visititems(visit_fn)
         fd.visititems(visit_fn)
     return list(set(names))
 
