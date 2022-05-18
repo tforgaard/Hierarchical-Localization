@@ -28,7 +28,10 @@ def list_h5_names(path):
                 names.append(obj.parent.name.strip('/'))
         for key in fd.keys():
             if isinstance(fd.get(key, getlink=True), h5py.ExternalLink):
-                fd[key].visititems(visit_fn)
+                if Path(fd.get(key, getlink=True).filename).exists():
+                    fd[key].visititems(visit_fn)
+                else:
+                    print(f"external link to {key} cannot be found!")
         fd.visititems(visit_fn)
     return list(set(names))
 
