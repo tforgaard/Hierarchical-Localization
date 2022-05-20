@@ -103,6 +103,7 @@ def main(sfm_dir: Path,
          image_options: Optional[Dict[str, Any]] = None,
          mapper_options: Optional[Dict[str, Any]] = None,
          run = True,
+         overwrite = False
          ) -> pycolmap.Reconstruction:
 
     assert features.exists(), features
@@ -112,14 +113,17 @@ def main(sfm_dir: Path,
     sfm_dir.mkdir(parents=True, exist_ok=True)
     database = sfm_dir / 'database.db'
 
-    create_empty_db(database)
-    import_images(image_dir, database, camera_mode, image_list, image_options)
-    image_ids = get_image_ids(database)
-    import_features(image_ids, database, features)
-    import_matches(image_ids, database, pairs, matches,
-                   min_match_score, skip_geometric_verification)
-    if not skip_geometric_verification:
-        estimation_and_geometric_verification(database, pairs, verbose)
+    if not database.exists() or overwrite:
+        create_empty_db(database)
+        import_images(image_dir, database, camera_mode, image_list, image_options)
+        image_ids = get_image_ids(database)
+        import_features(image_ids, database, features)
+        import_matches(image_ids, database, pairs, matches,
+                    min_match_score, skip_geometric_verification)
+        if not skip_geometric_verification:
+            estimation_and_geometric_verification(database, pairs, verbose)
+    else:
+        logger.info('The database already exists, skipping database setup.')
     reconstruction = None
     if run:
         reconstruction = run_reconstruction(
