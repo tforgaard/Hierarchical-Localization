@@ -31,7 +31,7 @@ def init_figure(height: int = 800) -> go.Figure:
         autorange=True,
     )
     fig.update_layout(
-        template="plotly_dark",
+        template="simple_white",
         height=height,
         scene_camera=dict(
             eye=dict(x=0., y=-.1, z=-2),
