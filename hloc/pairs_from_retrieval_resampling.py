@@ -69,9 +69,9 @@ def top_pairs_from_score_matrix(scores: torch.Tensor,
                                 min_score: Optional[float] = None):
     if isinstance(scores, np.ndarray):
         scores = torch.from_numpy(scores)
-    # if min_score is not None:
-    #     invalid = scores < min_score
-    # scores.masked_fill_(invalid, float('-inf'))
+    if min_score is not None:
+        invalid = scores < min_score
+    scores.masked_fill_(invalid, float('-inf'))
 
 
     topk = torch.topk(scores.flatten(), num_select)
@@ -118,19 +118,29 @@ def main(descriptors, output, num_matched,
 
     # RESAMPLING
     all_query_names = sorted(parse_names(None, query_list, query_names_h5))
+    Q = len(all_query_names)
+
+    if match_mask is None:
+        # Avoid self-matching
+        match_mask = np.array(all_query_names)[:, None] == np.array(db_names)[None]
+    else:
+        assert match_mask.shape == (len(all_query_names), len(db_names)), "mask shape must match size of query and database images!"
 
     name2idx = {name:i for i,name in enumerate(all_query_names)}
 
-    Q = len(all_query_names)
-    num_queries = Q // query_interval
-    pad = Q % query_interval
     resample_runs = min(resample_runs, query_interval-1) 
-    
+
     # score matrix of size [# query images x # db images]
     scores = np.zeros((Q,len(db_names)))
 
     # queries for first retrieval run
     queries = query_list[::query_interval]
+
+    # add last element for better interpolation
+    if queries[-1] != query_list[-1]:
+        queries.append(query_list[-1])
+
+    num_queries = len(queries)
 
     for run in range(resample_runs+1):
 
@@ -140,28 +150,32 @@ def main(descriptors, output, num_matched,
         query_desc = get_descriptors(query_names, descriptors)
         sim = torch.einsum('id,jd->ij', query_desc.to(device), db_desc.to(device))
 
-        self = np.array(query_names)[:, None] == np.array(db_names)[None]
-        values, indices, valid = pairs_from_score_matrix(sim, self, num_matched, min_score)
+        self = np.zeros((q,len(db_names)),dtype=bool)
+        for i, query_name in enumerate(query_names):
+            idx = name2idx[query_name]
+            self[i,:] = match_mask[idx,:]
+        
+        values, indices, valid = pairs_from_score_matrix(sim, self, num_matched)
 
         for i,j in zip(*np.where(valid)):
             scores[name2idx[query_names[i]],indices[i,j]] = values[i,j]
 
         score_vals = scores.mean(axis=1)
 
-        # pad last values
-        score_mask_tmp = score_vals > 0.0
-        x_tmp = np.where(score_mask_tmp)[0]
-        score_vals[x_tmp[-1]:x_tmp[-1]+pad] = score_vals[x_tmp[-1]]
+        # Find scores that are actually calculated
+        score_mask = score_vals != 0.0
+        
+        # Fix for negative scores
+        score_vals[score_vals < 0.0] = 0.0
         
         # interpolate probabilites between query samples
-        score_mask = score_vals > 0.0
         x = np.where(score_mask)[0]
         f = interp1d(x, score_vals[score_mask])
 
         xnew = np.arange(Q)
         score_vals_new = f(xnew)
         # Set already sampled queries to 0 prob
-        score_vals_new[score_mask_tmp] = 0.0
+        score_vals_new[score_mask] = 0.0
 
         xk = np.arange(len(score_vals_new))
         pk = score_vals_new / sum(score_vals_new)
@@ -174,11 +188,11 @@ def main(descriptors, output, num_matched,
         # debug plotting
         if visualize:
             outputs = Path(output).parent
-            fig, ax = plt.subplots(1, 1)
-            ax.plot(xk, custm.pmf(xk), 'ro', ms=4, mec='r')
-            ax.vlines(xk, 0, custm.pmf(xk), colors='r', lw=1)
+
+            plt.clf()
+            plt.plot(xk, custm.pmf(xk), 'ro', ms=4, mec='r')
+            plt.vlines(xk, 0, custm.pmf(xk), colors='r', lw=1)
             plt.savefig(outputs / f"probabilites_run{run}.png")
-            plt.show()
 
             plt.clf()
             plt.imshow(scores, interpolation=None)
@@ -189,8 +203,13 @@ def main(descriptors, output, num_matched,
     scores_final = np.zeros((Q,len(db_names)))
     for i, j in pairs:
         scores_final[i,j] = scores[i,j]
+    scores_final_masked = scores_final[scores_final>0.0]
 
-    pairs = [(all_query_names[i], db_names[j]) for i, j in pairs]
+    score_final = 0.0
+    if len(scores_final_masked):
+        score_final = np.percentile(scores_final_masked,90)
+
+    pairs = [(all_query_names[i], db_names[j]) for i, j in pairs if scores_final[i,j] > 0.0]
 
     logger.info(f'Found {len(pairs)} pairs.')
     with open(output, 'w') as f:
@@ -203,17 +222,15 @@ def main(descriptors, output, num_matched,
         custm = stats.rv_discrete(name='custm', values=(xk, pk))
 
         plt.clf()
-        fig, ax = plt.subplots(1, 1)
-        ax.plot(xk, custm.pmf(xk), 'ro', ms=4, mec='r')
-        ax.vlines(xk, 0, custm.pmf(xk), colors='r', lw=1)
+        plt.plot(xk, custm.pmf(xk), 'ro', ms=4, mec='r')
+        plt.vlines(xk, 0, custm.pmf(xk), colors='r', lw=1)
         plt.savefig(outputs / "probabilites_final.png")
-        plt.show()
 
         plt.clf()
         plt.imshow(scores_final, interpolation=None)
         plt.savefig(outputs / "scores_final.png")
 
-    return [q for q, _ in pairs], scores_final
+    return [q for q, _ in pairs], score_final
 
 
 if __name__ == "__main__":
