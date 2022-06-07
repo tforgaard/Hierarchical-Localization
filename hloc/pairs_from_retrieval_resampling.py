@@ -178,7 +178,10 @@ def main(descriptors, output, num_matched,
         score_vals_new[score_mask] = 0.0
 
         xk = np.arange(len(score_vals_new))
-        pk = score_vals_new / sum(score_vals_new)
+        if abs(sum(score_vals_new)) <= 0.000002:
+            pk = np.ones_like(score_vals_new) * 1 / len(score_vals_new)
+        else:
+            pk = score_vals_new / sum(score_vals_new)
         custm = stats.rv_discrete(name='custm', values=(xk, pk), seed=seed)
 
         # Sample new query images according to already sampled query images
