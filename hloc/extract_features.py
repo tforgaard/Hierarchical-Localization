@@ -222,7 +222,7 @@ def main(conf: Dict,
                 f'\n{pprint.pformat(conf)}')
 
     loader = ImageDataset(image_dir, conf['preprocessing'], image_list)
-    loader = torch.utils.data.DataLoader(loader, num_workers=1)
+    loader = torch.utils.data.DataLoader(loader, num_workers=0)
 
     if feature_path is None:
         feature_path = Path(export_dir, conf['output']+'.h5')
